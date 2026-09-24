@@ -1,0 +1,3382 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+  />
+
+  <title>Rekap Faktur</title>
+<!-- LINK MANIFEST -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#2563eb">
+
+    <!-- iOS / Safari PWA -->
+
+<meta
+  name="apple-mobile-web-app-capable"
+  content="yes"
+>
+
+<meta
+  name="apple-mobile-web-app-status-bar-style"
+  content="default"
+>
+
+<meta
+  name="apple-mobile-web-app-title"
+  content="Rekap Faktur"
+>
+
+<link
+  rel="apple-touch-icon"
+  href="./icons/icon-192.png"
+  >
+
+  <!-- SheetJS untuk export Excel -->
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+
+  <style>
+    /* =========================
+       RESET
+    ========================== */
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --bg: #f4f6f8;
+      --surface: #ffffff;
+      --surface-2: #eef1f4;
+      --text: #1d2329;
+      --text-soft: #68727d;
+      --border: #dfe3e7;
+      --primary: #2563eb;
+      --primary-dark: #1d4ed8;
+      --danger: #dc2626;
+      --success: #16a34a;
+      --shadow: 0 4px 15px rgba(0, 0, 0, 0.06);
+      --radius: 14px;
+    }
+
+    body.dark {
+      --bg: #111418;
+      --surface: #1a1f25;
+      --surface-2: #252b32;
+      --text: #f1f5f9;
+      --text-soft: #9aa4af;
+      --border: #303740;
+      --primary: #3b82f6;
+      --primary-dark: #2563eb;
+      --danger: #ef4444;
+      --success: #22c55e;
+      --shadow: 0 4px 15px rgba(0, 0, 0, 0.25);
+    }
+
+    html,
+    body {
+      min-height: 100%;
+    }
+
+    body {
+      font-family:
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+
+      background: var(--bg);
+      color: var(--text);
+
+      padding-bottom: 80px;
+    }
+
+    button,
+    input,
+    select {
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    /* =========================
+       APP
+    ========================== */
+
+    .app {
+      width: 100%;
+      max-width: 700px;
+      margin: 0 auto;
+    }
+
+    /* =========================
+       HEADER
+    ========================== */
+
+    .header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+
+      padding: 14px 16px;
+
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .header-title {
+      font-size: 20px;
+      font-weight: 750;
+    }
+
+    .header-subtitle {
+      font-size: 12px;
+      color: var(--text-soft);
+      margin-top: 2px;
+    }
+
+    .header-actions {
+      display: grid;
+      grid-auto-flow: column;
+      gap: 8px;
+    }
+
+    /* =========================
+       MAIN
+    ========================== */
+
+    main {
+      padding: 16px;
+    }
+
+    .page {
+      display: none;
+    }
+
+    .page.active {
+      display: block;
+    }
+
+    .page-title {
+      font-size: 24px;
+      font-weight: 750;
+      margin-bottom: 4px;
+    }
+
+    .page-description {
+      color: var(--text-soft);
+      font-size: 13px;
+      margin-bottom: 18px;
+    }
+
+    /* =========================
+       GRID
+    ========================== */
+
+    .grid {
+      display: grid;
+      gap: 12px;
+    }
+
+    .grid-2 {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .grid-auto {
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    }
+
+    /* =========================
+       CARD
+    ========================== */
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 16px;
+    }
+
+    .stat-card {
+      min-height: 105px;
+
+      display: grid;
+      align-content: center;
+      gap: 5px;
+    }
+
+    .stat-label {
+      font-size: 13px;
+      color: var(--text-soft);
+    }
+
+    .stat-value {
+      font-size: 30px;
+      font-weight: 800;
+    }
+
+    .stat-card.primary {
+      border-color: rgba(37, 99, 235, 0.3);
+    }
+
+    .stat-card.success {
+      border-color: rgba(22, 163, 74, 0.3);
+    }
+
+    .stat-card.danger {
+      border-color: rgba(220, 38, 38, 0.3);
+    }
+
+    /* =========================
+       BUTTON
+    ========================== */
+
+    .btn {
+      border: 0;
+      border-radius: 11px;
+      padding: 11px 15px;
+
+      min-height: 42px;
+
+      font-weight: 650;
+
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+      gap: 7px;
+
+      transition:
+        transform 0.1s ease,
+        opacity 0.1s ease;
+    }
+
+    .btn:active {
+      transform: scale(0.97);
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-dark);
+    }
+
+    .btn-secondary {
+      background: var(--surface-2);
+      color: var(--text);
+    }
+
+    .btn-danger {
+      background: var(--danger);
+      color: white;
+    }
+
+    .btn-success {
+      background: var(--success);
+      color: white;
+    }
+
+    .btn-icon {
+      width: 42px;
+      height: 42px;
+      padding: 0;
+      border-radius: 11px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+
+      display: grid;
+      place-items: center;
+      font-size: 18px;
+    }
+
+    /* =========================
+       FORM
+    ========================== */
+
+    .form {
+      display: grid;
+      gap: 15px;
+    }
+
+    .field {
+      display: grid;
+      gap: 7px;
+    }
+
+    .field label {
+      font-size: 13px;
+      font-weight: 650;
+    }
+
+    .input,
+    .select {
+      width: 100%;
+
+      min-height: 46px;
+
+      padding: 11px 13px;
+
+      border: 1px solid var(--border);
+      border-radius: 11px;
+
+      background: var(--surface);
+      color: var(--text);
+
+      outline: none;
+    }
+
+    .input:focus,
+    .select:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+    }
+
+    .form-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    /* =========================
+       SP SWITCH
+    ========================== */
+
+    .switch-wrapper {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+
+      background: var(--surface-2);
+      border-radius: 12px;
+      padding: 12px 14px;
+    }
+
+    .switch-info {
+      display: grid;
+      gap: 2px;
+    }
+
+    .switch-title {
+      font-weight: 700;
+      font-size: 14px;
+    }
+
+    .switch-description {
+      font-size: 12px;
+      color: var(--text-soft);
+    }
+
+    .switch {
+      position: relative;
+      width: 52px;
+      height: 30px;
+      flex-shrink: 0;
+    }
+
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      inset: 0;
+      background: #9ca3af;
+      border-radius: 30px;
+      transition: 0.2s;
+      cursor: pointer;
+    }
+
+    .slider::before {
+      content: "";
+      position: absolute;
+
+      width: 22px;
+      height: 22px;
+
+      left: 4px;
+      top: 4px;
+
+      background: white;
+      border-radius: 50%;
+
+      transition: 0.2s;
+    }
+
+    .switch input:checked + .slider {
+      background: var(--success);
+    }
+
+    .switch input:checked + .slider::before {
+      transform: translateX(22px);
+    }
+
+    /* =========================
+       QUICK ACTION
+    ========================== */
+
+    .quick-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    /* =========================
+       DATA FILTER
+    ========================== */
+
+    .filter-box {
+      display: grid;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+
+    .filter-grid {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr 1fr;
+      gap: 8px;
+    }
+
+    @media (max-width: 520px) {
+      .filter-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .filter-grid .search {
+        grid-column: 1 / -1;
+      }
+    }
+
+    /* =========================
+       INVOICE CARD
+    ========================== */
+
+    .invoice-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .invoice-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 13px;
+      padding: 14px;
+
+      display: grid;
+      gap: 10px;
+    }
+
+    .invoice-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: flex-start;
+    }
+
+    .invoice-number {
+      font-weight: 750;
+      font-size: 16px;
+      word-break: break-word;
+    }
+
+    .invoice-date {
+      font-size: 12px;
+      color: var(--text-soft);
+      margin-top: 3px;
+    }
+
+    .badge {
+      padding: 5px 9px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 750;
+      white-space: nowrap;
+    }
+
+    .badge-sp {
+      background: rgba(22, 163, 74, 0.12);
+      color: var(--success);
+    }
+
+    .badge-no-sp {
+      background: rgba(220, 38, 38, 0.12);
+      color: var(--danger);
+    }
+
+    .invoice-details {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .detail {
+      background: var(--surface-2);
+      padding: 8px 10px;
+      border-radius: 9px;
+    }
+
+    .detail-label {
+      font-size: 10px;
+      color: var(--text-soft);
+    }
+
+    .detail-value {
+      font-size: 13px;
+      font-weight: 650;
+      margin-top: 2px;
+    }
+
+    .invoice-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    /* =========================
+       SALESMAN
+    ========================== */
+
+    .salesman-list {
+      display: grid;
+      gap: 8px;
+      margin-top: 15px;
+    }
+
+    .salesman-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+
+      padding: 12px;
+
+      border: 1px solid var(--border);
+      border-radius: 11px;
+    }
+
+    .salesman-name {
+      font-weight: 650;
+    }
+
+    /* =========================
+       EMPTY
+    ========================== */
+
+    .empty {
+      text-align: center;
+      padding: 35px 15px;
+      color: var(--text-soft);
+    }
+
+    .empty-icon {
+      font-size: 30px;
+      margin-bottom: 8px;
+    }
+
+    .empty-title {
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+
+    /* =========================
+       NAVIGATION
+    ========================== */
+
+    .bottom-nav {
+      position: fixed;
+      z-index: 200;
+
+      left: 0;
+      right: 0;
+      bottom: 0;
+
+      height: 68px;
+
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+
+      max-width: 700px;
+      margin: 0 auto;
+    }
+
+    .nav-btn {
+      border: 0;
+      background: transparent;
+      color: var(--text-soft);
+
+      display: grid;
+      place-items: center;
+
+      gap: 2px;
+
+      font-size: 10px;
+      font-weight: 600;
+    }
+
+    .nav-icon {
+      font-size: 20px;
+    }
+
+    .nav-btn.active {
+      color: var(--primary);
+    }
+
+    /* =========================
+       TOAST
+    ========================== */
+
+    .toast {
+      position: fixed;
+
+      left: 50%;
+      bottom: 82px;
+
+      transform: translateX(-50%) translateY(20px);
+
+      background: var(--text);
+      color: var(--bg);
+
+      padding: 10px 15px;
+
+      border-radius: 10px;
+
+      font-size: 13px;
+      font-weight: 650;
+
+      opacity: 0;
+      pointer-events: none;
+
+      transition:
+        opacity 0.2s ease,
+        transform 0.2s ease;
+
+      z-index: 999;
+      max-width: calc(100% - 30px);
+      text-align: center;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* =========================
+       MODAL
+    ========================== */
+
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+
+      background: rgba(0, 0, 0, 0.5);
+
+      display: none;
+      place-items: center;
+
+      z-index: 500;
+
+      padding: 20px;
+    }
+
+    .modal-overlay.show {
+      display: grid;
+    }
+
+    .modal {
+      width: 100%;
+      max-width: 450px;
+
+      background: var(--surface);
+
+      border-radius: 16px;
+
+      padding: 18px;
+
+      box-shadow: 0 15px 50px rgba(0, 0, 0, 0.2);
+    }
+
+    .modal-title {
+      font-size: 18px;
+      font-weight: 750;
+      margin-bottom: 15px;
+    }
+
+    .modal-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 15px;
+    }
+
+    /* =========================
+       UTILITY
+    ========================== */
+
+    .mt-10 {
+      margin-top: 10px;
+    }
+
+    .mt-15 {
+      margin-top: 15px;
+    }
+
+    .mb-15 {
+      margin-bottom: 15px;
+    }
+
+    .text-danger {
+      color: var(--danger);
+    }
+
+    .text-success {
+      color: var(--success);
+    }
+
+    .hidden {
+      display: none !important;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="app">
+
+    <!-- =========================
+         HEADER
+    ========================== -->
+
+    <header class="header">
+
+      <div>
+        <div class="header-title">Rekap Faktur</div>
+        <div class="header-subtitle">Input & Rekap Faktur</div>
+      </div>
+
+      <div class="header-actions">
+
+        <button
+          class="btn-icon"
+          id="themeButton"
+          title="Ganti tema"
+        >
+          ◐
+        </button>
+
+        <button
+          class="btn-icon"
+          id="headerSettingsButton"
+          title="Pengaturan"
+        >
+          ⚙
+        </button>
+
+      </div>
+
+    </header>
+
+
+    <!-- =========================
+         MAIN
+    ========================== -->
+
+    <main>
+
+      <!-- =====================
+           DASHBOARD
+      ====================== -->
+
+      <section
+        id="page-dashboard"
+        class="page active"
+      >
+
+        <div class="page-title">
+          Dashboard
+        </div>
+
+        <div class="page-description">
+          Ringkasan data faktur yang sudah diinput.
+        </div>
+
+
+        <div class="grid grid-auto">
+
+          <div class="card stat-card primary">
+
+            <div class="stat-label">
+              Total Faktur
+            </div>
+
+            <div
+              class="stat-value"
+              id="totalInvoices"
+            >
+              0
+            </div>
+
+          </div>
+
+
+          <div class="card stat-card success">
+
+            <div class="stat-label">
+              Total SP
+            </div>
+
+            <div
+              class="stat-value"
+              id="totalSP"
+            >
+              0
+            </div>
+
+          </div>
+
+
+          <div class="card stat-card danger">
+
+            <div class="stat-label">
+              Tanpa SP
+            </div>
+
+            <div
+              class="stat-value"
+              id="totalNoSP"
+            >
+              0
+            </div>
+
+          </div>
+
+        </div>
+
+
+        <div class="quick-actions">
+
+          <button
+            class="btn btn-primary"
+            onclick="openInputPage()"
+          >
+            + Tambah Faktur
+          </button>
+
+          <button
+            class="btn btn-success"
+            onclick="exportExcel()"
+          >
+            Export Excel
+          </button>
+
+        </div>
+
+
+        <div class="card mt-15">
+
+          <div style="font-weight: 700;">
+            Informasi
+          </div>
+
+          <div
+            style="
+              color: var(--text-soft);
+              font-size: 13px;
+              line-height: 1.6;
+              margin-top: 7px;
+            "
+          >
+            Data disimpan langsung di perangkat.
+            Gunakan menu Data untuk melihat,
+            mencari, mengedit, atau menghapus faktur.
+          </div>
+
+        </div>
+
+      </section>
+
+
+      <!-- =====================
+           INPUT
+      ====================== -->
+
+      <section
+        id="page-input"
+        class="page"
+      >
+
+        <div class="page-title">
+          Input Faktur
+        </div>
+
+        <div class="page-description">
+          Masukkan data faktur dengan cepat.
+        </div>
+
+
+        <div class="card">
+
+          <form
+            id="invoiceForm"
+            class="form"
+          >
+
+            <input
+              type="hidden"
+              id="editId"
+            />
+
+
+            <!-- NO FAKTUR -->
+
+            <div class="field">
+
+              <label for="invoiceNumber">
+                No Faktur
+              </label>
+
+              <input
+                type="text"
+                id="invoiceNumber"
+                class="input"
+                placeholder="Contoh: INV-00123"
+                autocomplete="off"
+                required
+              />
+
+            </div>
+
+
+            <!-- TANGGAL -->
+
+            <div class="field">
+
+              <label for="invoiceDate">
+                Tanggal
+              </label>
+
+              <input
+                type="date"
+                id="invoiceDate"
+                class="input"
+                required
+              />
+
+            </div>
+
+
+            <!-- SALESMAN -->
+
+            <div class="field">
+
+              <label for="salesman">
+                Salesman
+              </label>
+
+              <select
+                id="salesman"
+                class="select"
+                required
+              >
+                <option value="">
+                  Pilih Salesman
+                </option>
+              </select>
+
+            </div>
+
+
+            <!-- SP -->
+
+            <div class="switch-wrapper">
+
+              <div class="switch-info">
+
+                <div class="switch-title">
+                  Surat Pesanan
+                </div>
+
+                <div
+                  class="switch-description"
+                  id="spStatusText"
+                >
+                  Tidak Ada SP
+                </div>
+
+              </div>
+
+
+              <label class="switch">
+
+                <input
+                  type="checkbox"
+                  id="hasSP"
+                />
+
+                <span class="slider"></span>
+
+              </label>
+
+            </div>
+
+
+            <!-- BUTTON -->
+
+            <div class="form-actions">
+
+              <button
+                type="button"
+                class="btn btn-secondary"
+                id="cancelEditButton"
+              >
+                Reset
+              </button>
+
+              <button
+                type="submit"
+                class="btn btn-primary"
+              >
+                <span id="saveButtonText">
+                  Simpan
+                </span>
+              </button>
+
+            </div>
+
+          </form>
+
+        </div>
+
+      </section>
+
+
+      <!-- =====================
+           DATA
+      ====================== -->
+
+      <section
+        id="page-data"
+        class="page"
+      >
+
+        <div class="page-title">
+          Data Faktur
+        </div>
+
+        <div class="page-description">
+          Cari, filter, edit, atau hapus data faktur.
+        </div>
+
+
+        <!-- FILTER -->
+
+        <div class="filter-box">
+
+          <input
+            type="search"
+            id="searchInput"
+            class="input search"
+            placeholder="Cari nomor faktur..."
+          />
+
+
+          <div class="filter-grid">
+
+            <select
+              id="filterMonth"
+              class="select"
+            >
+              <option value="">
+                Semua Bulan
+              </option>
+
+              <option value="1">Januari</option>
+              <option value="2">Februari</option>
+              <option value="3">Maret</option>
+              <option value="4">April</option>
+              <option value="5">Mei</option>
+              <option value="6">Juni</option>
+              <option value="7">Juli</option>
+              <option value="8">Agustus</option>
+              <option value="9">September</option>
+              <option value="10">Oktober</option>
+              <option value="11">November</option>
+              <option value="12">Desember</option>
+
+            </select>
+
+
+            <select
+              id="filterSalesman"
+              class="select"
+            >
+              <option value="">
+                Semua Salesman
+              </option>
+            </select>
+
+
+            <select
+              id="filterSP"
+              class="select"
+            >
+
+              <option value="">
+                Semua SP
+              </option>
+
+              <option value="true">
+                Ada SP
+              </option>
+
+              <option value="false">
+                Tanpa SP
+              </option>
+
+            </select>
+
+          </div>
+
+        </div>
+
+
+        <!-- LIST -->
+
+        <div
+          id="invoiceList"
+          class="invoice-list"
+        ></div>
+
+      </section>
+
+
+      <!-- =====================
+           SETTINGS
+      ====================== -->
+
+      <section
+        id="page-settings"
+        class="page"
+      >
+
+        <div class="page-title">
+          Pengaturan
+        </div>
+
+        <div class="page-description">
+          Kelola salesman dan data aplikasi.
+        </div>
+
+
+        <!-- SALESMAN -->
+
+        <div class="card">
+
+          <div style="font-size: 17px; font-weight: 750;">
+            Daftar Salesman
+          </div>
+
+          <div
+            style="
+              font-size: 12px;
+              color: var(--text-soft);
+              margin-top: 4px;
+            "
+          >
+            Tambahkan atau hapus salesman secara manual.
+          </div>
+
+
+          <div
+            style="
+              display: grid;
+              grid-template-columns: 1fr auto;
+              gap: 8px;
+              margin-top: 15px;
+            "
+          >
+
+            <input
+              type="text"
+              id="newSalesman"
+              class="input"
+              placeholder="Nama salesman"
+            />
+
+            <button
+              class="btn btn-primary"
+              id="addSalesmanButton"
+            >
+              Tambah
+            </button>
+
+          </div>
+
+
+          <div
+            id="salesmanList"
+            class="salesman-list"
+          ></div>
+
+        </div>
+
+
+        <!-- DATA MANAGEMENT -->
+
+        <div class="card mt-15">
+
+          <div style="font-size: 17px; font-weight: 750;">
+            Data Aplikasi
+          </div>
+
+          <div
+            style="
+              font-size: 12px;
+              color: var(--text-soft);
+              margin-top: 4px;
+            "
+          >
+            Gunakan dengan hati-hati.
+          </div>
+
+
+          <button
+            class="btn btn-danger"
+            style="width: 100%; margin-top: 15px;"
+            id="clearDataButton"
+          >
+            Hapus Semua Data Faktur
+          </button>
+
+        </div>
+
+      </section>
+
+    </main>
+
+
+    <!-- =========================
+         BOTTOM NAVIGATION
+    ========================== -->
+
+    <nav class="bottom-nav">
+
+      <button
+        class="nav-btn active"
+        data-page="dashboard"
+      >
+
+        <span class="nav-icon">
+          ⌂
+        </span>
+
+        Dashboard
+
+      </button>
+
+
+      <button
+        class="nav-btn"
+        data-page="input"
+      >
+
+        <span class="nav-icon">
+          +
+        </span>
+
+        Input
+
+      </button>
+
+
+      <button
+        class="nav-btn"
+        data-page="data"
+      >
+
+        <span class="nav-icon">
+          ▤
+        </span>
+
+        Data
+
+      </button>
+
+
+      <button
+        class="nav-btn"
+        data-page="settings"
+      >
+
+        <span class="nav-icon">
+          ⚙
+        </span>
+
+        Pengaturan
+
+      </button>
+
+    </nav>
+
+  </div>
+
+
+  <!-- =========================
+       MODAL KONFIRMASI
+  ========================== -->
+
+  <div
+    id="modalOverlay"
+    class="modal-overlay"
+  >
+
+    <div class="modal">
+
+      <div
+        id="modalTitle"
+        class="modal-title"
+      >
+        Konfirmasi
+      </div>
+
+      <div
+        id="modalMessage"
+        style="
+          color: var(--text-soft);
+          font-size: 13px;
+          line-height: 1.5;
+        "
+      >
+        Apakah Anda yakin?
+      </div>
+
+      <div class="modal-actions">
+
+        <button
+          class="btn btn-secondary"
+          id="modalCancel"
+        >
+          Batal
+        </button>
+
+        <button
+          class="btn btn-danger"
+          id="modalConfirm"
+        >
+          Ya
+        </button>
+
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <!-- =========================
+       TOAST
+  ========================== -->
+
+  <div
+    id="toast"
+    class="toast"
+  ></div>
+
+
+  <script>
+    /* =====================================================
+       REKAP FAKTUR V1
+       ===================================================== */
+
+
+    /* =====================================================
+       KONFIGURASI
+    ===================================================== */
+
+    const DB_NAME = "RekapFakturDB";
+    const DB_VERSION = 1;
+
+    let db;
+
+    let currentPage = "dashboard";
+
+    let confirmCallback = null;
+
+
+    /* =====================================================
+       ELEMENT
+    ===================================================== */
+
+    const invoiceForm =
+      document.getElementById("invoiceForm");
+
+    const invoiceNumber =
+      document.getElementById("invoiceNumber");
+
+    const invoiceDate =
+      document.getElementById("invoiceDate");
+
+    const salesman =
+      document.getElementById("salesman");
+
+    const hasSP =
+      document.getElementById("hasSP");
+
+    const editId =
+      document.getElementById("editId");
+
+    const saveButtonText =
+      document.getElementById("saveButtonText");
+
+    const spStatusText =
+      document.getElementById("spStatusText");
+
+
+    /* =====================================================
+       DATABASE
+    ===================================================== */
+
+    function openDatabase() {
+
+      return new Promise((resolve, reject) => {
+
+        const request =
+          indexedDB.open(DB_NAME, DB_VERSION);
+
+
+        request.onupgradeneeded = function (event) {
+
+          const database =
+            event.target.result;
+
+
+          if (!database.objectStoreNames.contains("invoices")) {
+
+            const invoiceStore =
+              database.createObjectStore(
+                "invoices",
+                {
+                  keyPath: "id",
+                  autoIncrement: true
+                }
+              );
+
+            invoiceStore.createIndex(
+              "invoiceNumber",
+              "invoiceNumber",
+              {
+                unique: false
+              }
+            );
+
+            invoiceStore.createIndex(
+              "date",
+              "date",
+              {
+                unique: false
+              }
+            );
+
+            invoiceStore.createIndex(
+              "salesman",
+              "salesman",
+              {
+                unique: false
+              }
+            );
+
+          }
+
+
+          if (!database.objectStoreNames.contains("salesmen")) {
+
+            database.createObjectStore(
+              "salesmen",
+              {
+                keyPath: "id",
+                autoIncrement: true
+              }
+            );
+
+          }
+
+        };
+
+
+        request.onsuccess = function (event) {
+
+          db = event.target.result;
+
+          resolve(db);
+
+        };
+
+
+        request.onerror = function () {
+
+          reject(request.error);
+
+        };
+
+      });
+
+    }
+
+
+    /* =====================================================
+       GENERIC DATABASE FUNCTIONS
+    ===================================================== */
+
+    function dbAdd(storeName, data) {
+
+      return new Promise((resolve, reject) => {
+
+        const transaction =
+          db.transaction(
+            storeName,
+            "readwrite"
+          );
+
+        const store =
+          transaction.objectStore(storeName);
+
+        const request =
+          store.add(data);
+
+
+        request.onsuccess = () => {
+          resolve(request.result);
+        };
+
+
+        request.onerror = () => {
+          reject(request.error);
+        };
+
+      });
+
+    }
+
+
+    function dbPut(storeName, data) {
+
+      return new Promise((resolve, reject) => {
+
+        const transaction =
+          db.transaction(
+            storeName,
+            "readwrite"
+          );
+
+        const store =
+          transaction.objectStore(storeName);
+
+        const request =
+          store.put(data);
+
+
+        request.onsuccess = () => {
+          resolve(request.result);
+        };
+
+
+        request.onerror = () => {
+          reject(request.error);
+        };
+
+      });
+
+    }
+
+
+    function dbDelete(storeName, id) {
+
+      return new Promise((resolve, reject) => {
+
+        const transaction =
+          db.transaction(
+            storeName,
+            "readwrite"
+          );
+
+        const store =
+          transaction.objectStore(storeName);
+
+        const request =
+          store.delete(id);
+
+
+        request.onsuccess = () => {
+          resolve();
+        };
+
+
+        request.onerror = () => {
+          reject(request.error);
+        };
+
+      });
+
+    }
+
+
+    function dbGetAll(storeName) {
+
+      return new Promise((resolve, reject) => {
+
+        const transaction =
+          db.transaction(
+            storeName,
+            "readonly"
+          );
+
+        const store =
+          transaction.objectStore(storeName);
+
+        const request =
+          store.getAll();
+
+
+        request.onsuccess = () => {
+          resolve(request.result);
+        };
+
+
+        request.onerror = () => {
+          reject(request.error);
+        };
+
+      });
+
+    }
+
+
+    function dbClear(storeName) {
+
+      return new Promise((resolve, reject) => {
+
+        const transaction =
+          db.transaction(
+            storeName,
+            "readwrite"
+          );
+
+        const store =
+          transaction.objectStore(storeName);
+
+        const request =
+          store.clear();
+
+
+        request.onsuccess = () => {
+          resolve();
+        };
+
+
+        request.onerror = () => {
+          reject(request.error);
+        };
+
+      });
+
+    }
+
+
+    /* =====================================================
+       SALESMAN
+    ===================================================== */
+
+    async function initializeSalesmen() {
+
+      const salesmen =
+        await dbGetAll("salesmen");
+
+
+      if (salesmen.length === 0) {
+
+        const defaultSalesmen = [
+          "YCN",
+          "ABC",
+          "DEF"
+        ];
+
+
+        for (const name of defaultSalesmen) {
+
+          await dbAdd(
+            "salesmen",
+            {
+              name
+            }
+          );
+
+        }
+
+      }
+
+    }
+
+
+    async function loadSalesmanOptions() {
+
+      const salesmen =
+        await dbGetAll("salesmen");
+
+
+      salesmen.sort((a, b) =>
+        a.name.localeCompare(
+          b.name,
+          "id",
+          {
+            sensitivity: "base"
+          }
+        )
+      );
+
+
+      salesman.innerHTML = `
+        <option value="">
+          Pilih Salesman
+        </option>
+      `;
+
+
+      const filterSalesman =
+        document.getElementById(
+          "filterSalesman"
+        );
+
+
+      filterSalesman.innerHTML = `
+        <option value="">
+          Semua Salesman
+        </option>
+      `;
+
+
+      salesmen.forEach(person => {
+
+        const option =
+          document.createElement("option");
+
+        option.value = person.name;
+        option.textContent = person.name;
+
+        salesman.appendChild(option);
+
+
+        const filterOption =
+          document.createElement("option");
+
+        filterOption.value = person.name;
+        filterOption.textContent = person.name;
+
+        filterSalesman.appendChild(
+          filterOption
+        );
+
+      });
+
+
+      renderSalesmen();
+
+    }
+
+
+    async function addSalesman() {
+
+      const input =
+        document.getElementById(
+          "newSalesman"
+        );
+
+
+      const name =
+        input.value.trim();
+
+
+      if (!name) {
+
+        showToast(
+          "Nama salesman belum diisi."
+        );
+
+        input.focus();
+
+        return;
+
+      }
+
+
+      const salesmen =
+        await dbGetAll("salesmen");
+
+
+      const duplicate =
+        salesmen.some(
+          person =>
+            person.name.toLowerCase() ===
+            name.toLowerCase()
+        );
+
+
+      if (duplicate) {
+
+        showToast(
+          "Salesman sudah ada."
+        );
+
+        return;
+
+      }
+
+
+      await dbAdd(
+        "salesmen",
+        {
+          name
+        }
+      );
+
+
+      input.value = "";
+
+
+      await loadSalesmanOptions();
+
+
+      showToast(
+        "Salesman berhasil ditambahkan."
+      );
+
+    }
+
+
+    async function renderSalesmen() {
+
+      const list =
+        document.getElementById(
+          "salesmanList"
+        );
+
+
+      const salesmen =
+        await dbGetAll("salesmen");
+
+
+      salesmen.sort((a, b) =>
+        a.name.localeCompare(
+          b.name
+        )
+      );
+
+
+      if (salesmen.length === 0) {
+
+        list.innerHTML = `
+          <div class="empty">
+            Belum ada salesman.
+          </div>
+        `;
+
+        return;
+
+      }
+
+
+      list.innerHTML =
+        salesmen.map(person => `
+
+          <div class="salesman-item">
+
+            <div class="salesman-name">
+              ${escapeHTML(person.name)}
+            </div>
+
+            <button
+              class="btn btn-danger"
+              onclick="deleteSalesman(${person.id})"
+            >
+              Hapus
+            </button>
+
+          </div>
+
+        `).join("");
+
+    }
+
+
+    async function deleteSalesman(id) {
+
+      const salesmen =
+        await dbGetAll("salesmen");
+
+
+      const person =
+        salesmen.find(
+          item => item.id === id
+        );
+
+
+      if (!person) {
+        return;
+      }
+
+
+      showConfirm(
+        "Hapus Salesman",
+        `Hapus salesman "${person.name}"?`,
+        async () => {
+
+          await dbDelete(
+            "salesmen",
+            id
+          );
+
+          await loadSalesmanOptions();
+
+          showToast(
+            "Salesman berhasil dihapus."
+          );
+
+        }
+      );
+
+    }
+
+
+    /* =====================================================
+       INVOICE
+    ===================================================== */
+
+    async function saveInvoice(event) {
+
+      event.preventDefault();
+
+
+      const number =
+        invoiceNumber.value.trim();
+
+
+      const date =
+        invoiceDate.value;
+
+
+      const person =
+        salesman.value;
+
+
+      const sp =
+        hasSP.checked;
+
+
+      if (!number || !date || !person) {
+
+        showToast(
+          "Lengkapi semua data terlebih dahulu."
+        );
+
+        return;
+
+      }
+
+
+      const invoices =
+        await dbGetAll("invoices");
+
+
+      const editingId =
+        editId.value
+          ? Number(editId.value)
+          : null;
+
+
+      const duplicate =
+        invoices.some(
+          item =>
+            item.invoiceNumber
+              .toLowerCase() ===
+              number.toLowerCase()
+            &&
+            item.id !== editingId
+        );
+
+
+      if (duplicate) {
+
+        showToast(
+          "Nomor faktur sudah ada."
+        );
+
+        invoiceNumber.focus();
+
+        return;
+
+      }
+
+
+      const invoiceData = {
+
+        invoiceNumber:
+          number,
+
+        date:
+          date,
+
+        salesman:
+          person,
+
+        hasSP:
+          sp
+
+      };
+
+
+      if (editingId) {
+
+        const existing =
+          invoices.find(
+            item =>
+              item.id === editingId
+          );
+
+
+        if (!existing) {
+          return;
+        }
+
+
+        invoiceData.id =
+          editingId;
+
+        invoiceData.createdAt =
+          existing.createdAt;
+
+        invoiceData.updatedAt =
+          new Date().toISOString();
+
+
+        await dbPut(
+          "invoices",
+          invoiceData
+        );
+
+
+        showToast(
+          "Faktur berhasil diperbarui."
+        );
+
+      } else {
+
+        invoiceData.createdAt =
+          new Date().toISOString();
+
+
+        await dbAdd(
+          "invoices",
+          invoiceData
+        );
+
+
+        showToast(
+          "Faktur berhasil disimpan."
+        );
+
+      }
+
+
+      resetForm();
+
+
+      await refreshAll();
+
+      openInputPage();
+
+    }
+
+
+    async function editInvoice(id) {
+
+      const invoices =
+        await dbGetAll("invoices");
+
+
+      const invoice =
+        invoices.find(
+          item =>
+            item.id === id
+        );
+
+
+      if (!invoice) {
+        return;
+      }
+
+
+      editId.value =
+        invoice.id;
+
+
+      invoiceNumber.value =
+        invoice.invoiceNumber;
+
+
+      invoiceDate.value =
+        invoice.date;
+
+
+      salesman.value =
+        invoice.salesman;
+
+
+      hasSP.checked =
+        invoice.hasSP;
+
+
+      updateSPText();
+
+
+      saveButtonText.textContent =
+        "Update";
+
+
+      openInputPage();
+
+
+      setTimeout(() => {
+
+        invoiceNumber.focus();
+
+      }, 100);
+
+    }
+
+
+    async function deleteInvoice(id) {
+
+      showConfirm(
+        "Hapus Faktur",
+        "Data faktur ini akan dihapus. Lanjutkan?",
+        async () => {
+
+          await dbDelete(
+            "invoices",
+            id
+          );
+
+
+          await refreshAll();
+
+
+          showToast(
+            "Faktur berhasil dihapus."
+          );
+
+        }
+      );
+
+    }
+
+
+    /* =====================================================
+       FORM
+    ===================================================== */
+
+    function resetForm() {
+
+      editId.value = "";
+
+      invoiceForm.reset();
+
+      invoiceDate.value =
+        getTodayDate();
+
+      saveButtonText.textContent =
+        "Simpan";
+
+      updateSPText();
+
+    }
+
+
+    function updateSPText() {
+
+      if (hasSP.checked) {
+
+        spStatusText.textContent =
+          "Ada SP";
+
+      } else {
+
+        spStatusText.textContent =
+          "Tidak Ada SP";
+
+      }
+
+    }
+
+
+    /* =====================================================
+       DASHBOARD
+    ===================================================== */
+
+    async function updateDashboard() {
+
+      const invoices =
+        await dbGetAll("invoices");
+
+
+      const total =
+        invoices.length;
+
+
+      const totalSP =
+        invoices.filter(
+          invoice =>
+            invoice.hasSP === true
+        ).length;
+
+
+      const totalNoSP =
+        total - totalSP;
+
+
+      document.getElementById(
+        "totalInvoices"
+      ).textContent =
+        total;
+
+
+      document.getElementById(
+        "totalSP"
+      ).textContent =
+        totalSP;
+
+
+      document.getElementById(
+        "totalNoSP"
+      ).textContent =
+        totalNoSP;
+
+    }
+
+
+    /* =====================================================
+       DATA LIST
+    ===================================================== */
+
+    async function renderInvoices() {
+
+      const list =
+        document.getElementById(
+          "invoiceList"
+        );
+
+
+      const invoices =
+        await dbGetAll("invoices");
+
+
+      const search =
+        document.getElementById(
+          "searchInput"
+        ).value
+          .trim()
+          .toLowerCase();
+
+
+      const month =
+        document.getElementById(
+          "filterMonth"
+        ).value;
+
+
+      const filterSalesman =
+        document.getElementById(
+          "filterSalesman"
+        ).value;
+
+
+      const filterSP =
+        document.getElementById(
+          "filterSP"
+        ).value;
+
+
+      let filtered =
+        invoices.filter(invoice => {
+
+          const matchesSearch =
+            !search ||
+            invoice.invoiceNumber
+              .toLowerCase()
+              .includes(search);
+
+
+          const invoiceMonth =
+            String(
+              Number(
+                invoice.date.substring(5, 7)
+              )
+            );
+
+
+          const matchesMonth =
+            !month ||
+            invoiceMonth === month;
+
+
+          const matchesSalesman =
+            !filterSalesman ||
+            invoice.salesman ===
+              filterSalesman;
+
+
+          const matchesSP =
+            filterSP === "" ||
+            String(invoice.hasSP) ===
+              filterSP;
+
+
+          return (
+            matchesSearch &&
+            matchesMonth &&
+            matchesSalesman &&
+            matchesSP
+          );
+
+        });
+
+
+      filtered.sort(
+        (a, b) =>
+          new Date(b.date) -
+          new Date(a.date)
+      );
+
+
+      if (filtered.length === 0) {
+
+        list.innerHTML = `
+
+          <div class="card empty">
+
+            <div class="empty-icon">
+              ▤
+            </div>
+
+            <div class="empty-title">
+              Tidak ada data
+            </div>
+
+            <div>
+              Belum ada faktur yang sesuai
+              dengan pencarian atau filter.
+            </div>
+
+          </div>
+
+        `;
+
+        return;
+
+      }
+
+
+      list.innerHTML =
+        filtered.map(invoice => {
+
+          const date =
+            formatDate(
+              invoice.date
+            );
+
+
+          const badgeClass =
+            invoice.hasSP
+              ? "badge-sp"
+              : "badge-no-sp";
+
+
+          const badgeText =
+            invoice.hasSP
+              ? "Ada SP"
+              : "Tanpa SP";
+
+
+          return `
+
+            <article class="invoice-card">
+
+              <div class="invoice-header">
+
+                <div>
+
+                  <div class="invoice-number">
+                    ${escapeHTML(
+                      invoice.invoiceNumber
+                    )}
+                  </div>
+
+                  <div class="invoice-date">
+                    ${date}
+                  </div>
+
+                </div>
+
+
+                <span
+                  class="badge ${badgeClass}"
+                >
+                  ${badgeText}
+                </span>
+
+              </div>
+
+
+              <div class="invoice-details">
+
+                <div class="detail">
+
+                  <div class="detail-label">
+                    Salesman
+                  </div>
+
+                  <div class="detail-value">
+                    ${escapeHTML(
+                      invoice.salesman
+                    )}
+                  </div>
+
+                </div>
+
+
+                <div class="detail">
+
+                  <div class="detail-label">
+                    Bulan / Tahun
+                  </div>
+
+                  <div class="detail-value">
+                    ${getMonthName(
+                      Number(
+                        invoice.date.substring(5, 7)
+                      )
+                    )}
+                    ${invoice.date.substring(0, 4)}
+                  </div>
+
+                </div>
+
+              </div>
+
+
+              <div class="invoice-actions">
+
+                <button
+                  class="btn btn-secondary"
+                  onclick="editInvoice(${invoice.id})"
+                >
+                  Edit
+                </button>
+
+                <button
+                  class="btn btn-danger"
+                  onclick="deleteInvoice(${invoice.id})"
+                >
+                  Hapus
+                </button>
+
+              </div>
+
+            </article>
+
+          `;
+
+        }).join("");
+
+    }
+
+
+    /* =====================================================
+       EXPORT EXCEL
+    ===================================================== */
+
+    async function exportExcel() {
+
+      const invoices =
+        await dbGetAll("invoices");
+
+
+      if (invoices.length === 0) {
+
+        showToast(
+          "Belum ada data untuk diexport."
+        );
+
+        return;
+
+      }
+
+
+      if (typeof XLSX === "undefined") {
+
+        showToast(
+          "Library Excel belum tersedia. Periksa koneksi internet."
+        );
+
+        return;
+
+      }
+
+
+      const rows =
+        invoices
+          .sort(
+            (a, b) =>
+              new Date(a.date) -
+              new Date(b.date)
+          )
+          .map(
+            (invoice, index) => {
+
+              const year =
+                Number(
+                  invoice.date.substring(
+                    0,
+                    4
+                  )
+                );
+
+
+              const month =
+                Number(
+                  invoice.date.substring(
+                    5,
+                    7
+                  )
+                );
+
+
+              return {
+
+                No:
+                  index + 1,
+
+                "No Faktur":
+                  invoice.invoiceNumber,
+
+                Tanggal:
+                  invoice.date,
+
+                Bulan:
+                  getMonthName(month),
+
+                Tahun:
+                  year,
+
+                Salesman:
+                  invoice.salesman,
+
+                SP:
+                  invoice.hasSP
+                    ? "Ada SP"
+                    : "Tanpa SP"
+
+              };
+
+            }
+          );
+
+
+      const worksheet =
+        XLSX.utils.json_to_sheet(
+          rows
+        );
+
+
+      worksheet["!cols"] = [
+
+        {
+          wch: 7
+        },
+
+        {
+          wch: 22
+        },
+
+        {
+          wch: 14
+        },
+
+        {
+          wch: 15
+        },
+
+        {
+          wch: 10
+        },
+
+        {
+          wch: 20
+        },
+
+        {
+          wch: 14
+        }
+
+      ];
+
+
+      const workbook =
+        XLSX.utils.book_new();
+
+
+      XLSX.utils.book_append_sheet(
+        workbook,
+        worksheet,
+        "Rekap Faktur"
+      );
+
+
+      const year =
+        new Date()
+          .getFullYear();
+
+
+      XLSX.writeFile(
+        workbook,
+        `Rekap_Faktur_${year}.xlsx`
+      );
+
+
+      showToast(
+        "Excel berhasil dibuat."
+      );
+
+    }
+
+
+    /* =====================================================
+       NAVIGATION
+    ===================================================== */
+
+    function navigateTo(pageName) {
+
+      document
+        .querySelectorAll(".page")
+        .forEach(page => {
+
+          page.classList.remove(
+            "active"
+          );
+
+        });
+
+
+      const target =
+        document.getElementById(
+          `page-${pageName}`
+        );
+
+
+      if (!target) {
+        return;
+      }
+
+
+      target.classList.add(
+        "active"
+      );
+
+
+      document
+        .querySelectorAll(".nav-btn")
+        .forEach(button => {
+
+          button.classList.toggle(
+            "active",
+            button.dataset.page ===
+              pageName
+          );
+
+        });
+
+
+      currentPage =
+        pageName;
+
+
+      window.scrollTo({
+        top: 0,
+        behavior: "smooth"
+      });
+
+
+      if (pageName === "data") {
+
+        renderInvoices();
+
+      }
+
+
+      if (pageName === "settings") {
+
+        renderSalesmen();
+
+      }
+
+    }
+
+
+    function openInputPage() {
+
+      navigateTo("input");
+
+      setTimeout(() => {
+
+        invoiceNumber.focus();
+
+      }, 100);
+
+    }
+
+
+    /* =====================================================
+       THEME
+    ===================================================== */
+
+    function loadTheme() {
+
+      const savedTheme =
+        localStorage.getItem(
+          "rekap-faktur-theme"
+        );
+
+
+      if (savedTheme === "dark") {
+
+        document.body.classList.add(
+          "dark"
+        );
+
+      }
+
+    }
+
+
+    function toggleTheme() {
+
+      document.body.classList.toggle(
+        "dark"
+      );
+
+
+      const theme =
+        document.body.classList.contains(
+          "dark"
+        )
+          ? "dark"
+          : "light";
+
+
+      localStorage.setItem(
+        "rekap-faktur-theme",
+        theme
+      );
+
+    }
+
+
+    /* =====================================================
+       MODAL
+    ===================================================== */
+
+    function showConfirm(
+      title,
+      message,
+      callback
+    ) {
+
+      document.getElementById(
+        "modalTitle"
+      ).textContent =
+        title;
+
+
+      document.getElementById(
+        "modalMessage"
+      ).textContent =
+        message;
+
+
+      confirmCallback =
+        callback;
+
+
+      document.getElementById(
+        "modalOverlay"
+      ).classList.add(
+        "show"
+      );
+
+    }
+
+
+    function closeModal() {
+
+      document.getElementById(
+        "modalOverlay"
+      ).classList.remove(
+        "show"
+      );
+
+
+      confirmCallback =
+        null;
+
+    }
+
+
+    /* =====================================================
+       TOAST
+    ===================================================== */
+
+    let toastTimeout;
+
+
+    function showToast(message) {
+
+      const toast =
+        document.getElementById(
+          "toast"
+        );
+
+
+      toast.textContent =
+        message;
+
+
+      toast.classList.add(
+        "show"
+      );
+
+
+      clearTimeout(
+        toastTimeout
+      );
+
+
+      toastTimeout =
+        setTimeout(() => {
+
+          toast.classList.remove(
+            "show"
+          );
+
+        }, 2200);
+
+    }
+
+
+    /* =====================================================
+       HELPERS
+    ===================================================== */
+
+    function getTodayDate() {
+
+      const now =
+        new Date();
+
+
+      const year =
+        now.getFullYear();
+
+
+      const month =
+        String(
+          now.getMonth() + 1
+        ).padStart(
+          2,
+          "0"
+        );
+
+
+      const day =
+        String(
+          now.getDate()
+        ).padStart(
+          2,
+          "0"
+        );
+
+
+      return `${year}-${month}-${day}`;
+
+    }
+
+
+    function formatDate(dateString) {
+
+      if (!dateString) {
+        return "-";
+      }
+
+
+      const [
+        year,
+        month,
+        day
+      ] =
+        dateString.split("-");
+
+
+      return `${day}/${month}/${year}`;
+
+    }
+
+
+    function getMonthName(month) {
+
+      const months = [
+
+        "Januari",
+        "Februari",
+        "Maret",
+        "April",
+        "Mei",
+        "Juni",
+        "Juli",
+        "Agustus",
+        "September",
+        "Oktober",
+        "November",
+        "Desember"
+
+      ];
+
+
+      return months[month - 1] || "-";
+
+    }
+
+
+    function escapeHTML(value) {
+
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll(
+          "'",
+          "&#039;"
+        );
+
+    }
+
+
+    /* =====================================================
+       REFRESH
+    ===================================================== */
+
+    async function refreshAll() {
+
+      await updateDashboard();
+
+      await loadSalesmanOptions();
+
+      await renderInvoices();
+
+    }
+
+
+    /* =====================================================
+       EVENT LISTENERS
+    ===================================================== */
+
+
+    // Navigation
+
+    document
+      .querySelectorAll(".nav-btn")
+      .forEach(button => {
+
+        button.addEventListener(
+          "click",
+          () => {
+
+            navigateTo(
+              button.dataset.page
+            );
+
+          }
+        );
+
+      });
+
+
+    // Header settings
+
+    document
+      .getElementById(
+        "headerSettingsButton"
+      )
+      .addEventListener(
+        "click",
+        () => {
+
+          navigateTo(
+            "settings"
+          );
+
+        }
+      );
+
+
+    // Theme
+
+    document
+      .getElementById(
+        "themeButton"
+      )
+      .addEventListener(
+        "click",
+        toggleTheme
+      );
+
+
+    // Form submit
+
+    invoiceForm.addEventListener(
+      "submit",
+      saveInvoice
+    );
+
+
+    // SP switch
+
+    hasSP.addEventListener(
+      "change",
+      updateSPText
+    );
+
+
+    // Reset
+
+    document
+      .getElementById(
+        "cancelEditButton"
+      )
+      .addEventListener(
+        "click",
+        resetForm
+      );
+
+
+    // Add salesman
+
+    document
+      .getElementById(
+        "addSalesmanButton"
+      )
+      .addEventListener(
+        "click",
+        addSalesman
+      );
+
+
+    // Enter salesman
+
+    document
+      .getElementById(
+        "newSalesman"
+      )
+      .addEventListener(
+        "keydown",
+        event => {
+
+          if (
+            event.key === "Enter"
+          ) {
+
+            event.preventDefault();
+
+            addSalesman();
+
+          }
+
+        }
+      );
+
+
+    // Search
+
+    document
+      .getElementById(
+        "searchInput"
+      )
+      .addEventListener(
+        "input",
+        renderInvoices
+      );
+
+
+    // Filters
+
+    document
+      .getElementById(
+        "filterMonth"
+      )
+      .addEventListener(
+        "change",
+        renderInvoices
+      );
+
+
+    document
+      .getElementById(
+        "filterSalesman"
+      )
+      .addEventListener(
+        "change",
+        renderInvoices
+      );
+
+
+    document
+      .getElementById(
+        "filterSP"
+      )
+      .addEventListener(
+        "change",
+        renderInvoices
+      );
+
+
+    // Modal cancel
+
+    document
+      .getElementById(
+        "modalCancel"
+      )
+      .addEventListener(
+        "click",
+        closeModal
+      );
+
+
+    // Modal confirm
+
+    document
+      .getElementById(
+        "modalConfirm"
+      )
+      .addEventListener(
+        "click",
+        async () => {
+
+          if (
+            typeof confirmCallback ===
+            "function"
+          ) {
+
+            const callback =
+              confirmCallback;
+
+            closeModal();
+
+            await callback();
+
+          }
+
+        }
+      );
+
+
+    // Clear all data
+
+    document
+      .getElementById(
+        "clearDataButton"
+      )
+      .addEventListener(
+        "click",
+        () => {
+
+          showConfirm(
+            "Hapus Semua Data",
+            "SEMUA data faktur akan dihapus. Tindakan ini tidak dapat dibatalkan.",
+            async () => {
+
+              await dbClear(
+                "invoices"
+              );
+
+
+              await refreshAll();
+
+
+              showToast(
+                "Semua data faktur telah dihapus."
+              );
+
+            }
+          );
+
+        }
+      );
+
+
+    /* =====================================================
+       KEYBOARD / INPUT FLOW
+    ===================================================== */
+
+    invoiceNumber.addEventListener(
+      "keydown",
+      event => {
+
+        if (
+          event.key === "Enter"
+        ) {
+
+          event.preventDefault();
+
+          invoiceDate.focus();
+
+        }
+
+      }
+    );
+
+
+    invoiceDate.addEventListener(
+      "keydown",
+      event => {
+
+        if (
+          event.key === "Enter"
+        ) {
+
+          event.preventDefault();
+
+          salesman.focus();
+
+        }
+
+      }
+    );
+
+
+    salesman.addEventListener(
+      "keydown",
+      event => {
+
+        if (
+          event.key === "Enter"
+        ) {
+
+          event.preventDefault();
+
+          hasSP.focus();
+
+        }
+
+      }
+    );
+
+
+    hasSP.addEventListener(
+      "keydown",
+      event => {
+
+        if (
+          event.key === "Enter" ||
+          event.key === " "
+        ) {
+
+          event.preventDefault();
+
+          hasSP.checked =
+            !hasSP.checked;
+
+          updateSPText();
+
+        }
+
+      }
+    );
+
+
+    /* =====================================================
+       INITIALIZATION
+    ===================================================== */
+
+    async function initializeApp() {
+
+      try {
+
+        loadTheme();
+
+
+        await openDatabase();
+
+
+        await initializeSalesmen();
+
+
+        invoiceDate.value =
+          getTodayDate();
+
+
+        await refreshAll();
+
+
+        updateSPText();
+
+
+      } catch (error) {
+
+        console.error(
+          error
+        );
+
+
+        showToast(
+          "Gagal menjalankan aplikasi."
+        );
+
+      }
+
+    }
+
+
+    initializeApp();
+    // SERVICE WORKER
+
+
+  </script>
+
+</body>
+</html>
